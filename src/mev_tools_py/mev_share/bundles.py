@@ -56,4 +56,6 @@ def get_mev_bundles(
                     last_refund_idx = None
                 break  # found origin, move on
 
+    bundles.reverse()
+
     return bundles
