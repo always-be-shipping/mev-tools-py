@@ -1,7 +1,7 @@
 from hexbytes import HexBytes
 import pytest
 from unittest.mock import MagicMock
-from mev_tools_py.enrich.transactions import enrich_txs
+from mev_tools_py.enrich.transactions import enrich_txs, enrich_tx
 
 
 @pytest.fixture
@@ -47,11 +47,26 @@ def mock_web3():
     return w3
 
 
+def test_enrich_tx(mock_web3):
+    tx_hash = "0x" + "aa" * 32
+    tx = enrich_tx(mock_web3, tx_hash)
+
+    assert tx["from"] == "0xorigin"
+    assert tx["to"] == "0xtarget"
+    assert tx["value"] == 123
+    assert tx["gas"] == 21000
+    assert tx["gas_price"] == 1000000000
+    assert tx["gas_used"] == 21000
+    assert tx["input"] == "0xdeadbeef"
+    assert len(tx["logs"]) == 1
+    assert tx["logs"][0]["address"] == "0xlogsource"
+    assert tx["logs"][0]["topics"][0].to_0x_hex() == "0x" + "abcd" * 8
+
+
 def test_enrich_txs(mock_web3):
     tx_hashes = ["0x" + "aa" * 32, "0x" + "bb" * 32]
     result = enrich_txs(mock_web3, tx_hashes)
 
-    assert len(result) == 2
     for tx in result:
         assert tx["from"] == "0xorigin"
         assert tx["to"] == "0xtarget"

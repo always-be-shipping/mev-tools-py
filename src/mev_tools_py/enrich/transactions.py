@@ -2,7 +2,7 @@ from typing import List, Dict
 from web3 import Web3
 
 
-def entrich_tx(w3: Web3, tx_hash: str) -> Dict:
+def enrich_tx(w3: Web3, tx_hash: str) -> Dict:
     """Enrich a transaction with additional details.
 
     Args:
@@ -41,6 +41,6 @@ def enrich_txs(w3: Web3, tx_hashes: List[str]) -> List[Dict]:
     """
     enriched = []
     for tx_hash in tx_hashes:
-        enriched.append(entrich_tx(w3, tx_hash))
+        enriched.append(enrich_tx(w3, tx_hash))
 
     return enriched
