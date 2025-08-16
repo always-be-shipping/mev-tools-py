@@ -25,6 +25,7 @@ def entrich_tx(w3: Web3, tx_hash: str) -> Dict:
         "gas_price": tx["gasPrice"],
         "gas_used": receipt["gasUsed"],
         "input": tx["input"],
+        "logs": receipt["logs"],
     }
 
 
