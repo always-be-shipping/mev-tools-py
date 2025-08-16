@@ -1,0 +1,19 @@
+[project]
+name = "mev-tools-py"
+version = "0.1.0"
+description = "Tools to help with MEV research and development in Python."
+readme = "README.md"
+authors = [{ name = "Kyle Montag", email = "thekylemontag@gmail.com" }]
+requires-python = ">=3.13"
+dependencies = [
+    "web3>=7.13.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
