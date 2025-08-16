@@ -121,7 +121,6 @@ def mock_web3():
         ],
     }
 
-    # origin topic at tx 0
     w3.eth.get_logs.return_value = [
         {
             "transactionHash": HexBytes("00" * 32),
