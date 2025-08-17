@@ -1,6 +1,6 @@
 [project]
 name = "mev-tools-py"
-version = "0.1.0"
+version = "0.2.0"
 description = "Tools to help with MEV research and development in Python."
 readme = "README.md"
 authors = [{ name = "Kyle Montag", email = "thekylemontag@gmail.com" }]
