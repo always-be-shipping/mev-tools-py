@@ -17,5 +17,63 @@ build-backend = "uv_build"
 dev = [
     "mypy>=1.17.1",
     "pytest>=8.4.1",
+    "pytest-cov>=6.1.0",
     "ruff>=0.12.9",
+    "poethepoet>=0.29.0",
+    "commitizen>=3.29.0",
 ]
+
+[tool.poe.tasks]
+# Development workflow
+install = "uv sync"
+dev = { sequence = ["install", "format", "lint", "typecheck", "test"], help = "Full development setup and check" }
+
+# Testing
+test = "pytest --cov=src"
+test-watch = "pytest --cov=src -f"
+test-verbose = "pytest --cov=src -v"
+coverage = "pytest --cov=src --cov-report=html"
+
+# Code quality
+lint = "ruff check ."
+lint-fix = "ruff check . --fix"
+format = "ruff format ."
+format-check = "ruff format . --check"
+typecheck = "mypy src"
+
+# Combined quality checks
+check = { sequence = ["format-check", "lint", "typecheck"], help = "Run all code quality checks" }
+fix = { sequence = ["format", "lint-fix"], help = "Auto-fix code style issues" }
+
+# Cleaning
+clean = "rm -rf .pytest_cache .mypy_cache .ruff_cache **/__pycache__ **/*.pyc .coverage htmlcov/ dist/ build/"
+
+# Building and publishing
+build = "uv build"
+publish = { sequence = ["clean", "build"], help = "Clean and build the package" }
+
+# Pre-commit simulation
+pre-commit = { sequence = ["format", "lint", "typecheck", "test"], help = "Run pre-commit checks" }
+
+[tool.poe.tasks.test-file]
+help = "Run tests for a specific file"
+cmd = "pytest ${file}"
+args = [{ name = "file", help = "Test file to run", positional = true }]
+
+[tool.poe.tasks.test-function]
+help = "Run a specific test function"
+cmd = "pytest ${file}::${function}"
+args = [
+    { name = "file", help = "Test file containing the function" },
+    { name = "function", help = "Test function name" }
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version = "0.1.0"
+version_scheme = "semver"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true
+bump_message = "bump: version $current_version → $new_version"
