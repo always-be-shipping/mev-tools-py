@@ -103,7 +103,7 @@ This project uses [poethepoet](https://poethepoet.natn.io/) as a task runner. Av
 ```bash
 uv run poe install     # Install dependencies
 uv run poe dev         # Full development setup (install + format + lint + test)
-uv run poe test        # Run all tests
+uv run poe test        # Run all tests (unit + integration)
 uv run poe coverage    # Run tests with coverage report
 ```
 
@@ -123,6 +123,93 @@ uv run poe fix         # Auto-fix style issues
 uv run poe test-file tests/enrich/test_transactions.py
 uv run poe test-function --file tests/oev/protocols/test_euler_v1.py --function test_decode_liquidation
 ```
+
+### Integration Tests
+
+Integration tests validate OEV protocol processors against real blockchain data using live RPC connections.
+
+#### Setup
+
+1. **Configure RPC endpoint**:
+   ```bash
+   export ANKR_RPC_URL="https://rpc.ankr.com/eth"
+   ```
+   
+   Or copy and configure the environment file:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your RPC settings
+   ```
+
+2. **Available RPC options**:
+   - **Ankr (free)**: `https://rpc.ankr.com/eth`
+   - **Ankr (project)**: `https://rpc.ankr.com/eth/YOUR_PROJECT_ID`
+   - **Infura**: `https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID`
+   - **Alchemy**: `https://eth-mainnet.alchemyapi.io/v2/YOUR_ALCHEMY_API_KEY`
+
+#### Running Integration Tests
+
+```bash
+# Run only unit tests (fast, no RPC required)
+uv run pytest -m "not integration"
+
+# Run only integration tests (requires RPC connection)
+uv run pytest -m integration
+
+# Run all tests (unit + integration)
+uv run poe test
+
+# Run integration tests with custom RPC
+ANKR_RPC_URL=https://your-rpc-endpoint.com uv run pytest -m integration
+
+# Skip slow-running integration tests
+SKIP_SLOW_TESTS=true uv run pytest -m integration
+
+# Run specific integration test
+uv run pytest tests/integration/test_oev_protocols.py::TestOEVProtocolsIntegration::test_aave_v3_real_liquidation_detection -v
+```
+
+#### Integration Test Categories
+
+- **Protocol Validation**: Test protocol processors with real liquidation transactions
+- **Cross-Protocol Analysis**: Analyze blocks containing multiple protocol liquidations  
+- **Gas Efficiency**: Compare gas usage patterns across different protocols
+- **Error Handling**: Validate robustness with invalid data and edge cases
+- **Market Data**: Test live contract interactions (Morpho market info, etc.)
+
+#### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANKR_RPC_URL` | `https://rpc.ankr.com/eth` | Ethereum RPC endpoint |
+| `INTEGRATION_TEST_TIMEOUT` | `30` | Test timeout in seconds |
+| `TEST_BLOCK_START` | `18500000` | Starting block for range tests |
+| `TEST_BLOCK_END` | `18500010` | Ending block for range tests |
+| `SKIP_SLOW_TESTS` | `false` | Skip slow-running tests |
+
+#### Adding Test Cases
+
+To add new liquidation test cases:
+
+1. Find a liquidation transaction using a block explorer
+2. Verify it contains the expected protocol events
+3. Add to `tests/integration/data/known_liquidations.json`:
+   ```json
+   {
+     "protocol_name": [
+       {
+         "block": 18500000,
+         "tx_hash": "0x...",
+         "liquidator": "0x...",
+         "user": "0x...",
+         "description": "Description of liquidation"
+       }
+     ]
+   }
+   ```
+4. Run integration tests to validate
+
+See `tests/integration/README.md` for detailed documentation.
 
 ## Project Structure
 

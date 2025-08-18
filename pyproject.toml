@@ -68,6 +68,18 @@ args = [
     { name = "function", help = "Test function name" }
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests requiring RPC connection (deselect with '-m \"not integration\"')",
+    "slow: marks tests as slow running"
+]
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra"
+]
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 tag_format = "v$version"

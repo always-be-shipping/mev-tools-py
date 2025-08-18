@@ -1,0 +1,100 @@
+{
+  "aave_v3": [
+    {
+      "block": 18500123,
+      "tx_hash": "0x1a2b3c4d5e6f789012345678901234567890123456789012345678901234567890",
+      "liquidator": "0x742d35cc6634c0532925a3b8d8d5c0532925a3b8",
+      "user": "0x532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
+      "collateral_asset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "debt_asset": "0xA0b86a33E6441db5dB86DF4D9E5C4e6a05F3a5db",
+      "description": "Large WETH/USDC liquidation on Aave V3"
+    },
+    {
+      "block": 18501456,
+      "tx_hash": "0x2b3c4d5e6f789012345678901234567890123456789012345678901234567890a1",
+      "liquidator": "0x853f46aa7c4d7f42c3d2e6c5b8d9a1f2e3c4d5f6",
+      "user": "0x963e57b9c6d8f3a2b1e4c7d6a5f8e9b2c3d4e5f6",
+      "collateral_asset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "debt_asset": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      "description": "WETH/DAI liquidation on Aave V3"
+    }
+  ],
+  "euler_v1": [
+    {
+      "block": 18400789,
+      "tx_hash": "0x3c4d5e6f789012345678901234567890123456789012345678901234567890a1b2",
+      "liquidator": "0x742d35cc6634c0532925a3b8d8d5c0532925a3b8",
+      "user": "0x532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
+      "underlying_asset": "0xA0b86a33E6441db5dB86DF4D9E5C4e6a05F3a5db",
+      "collateral_asset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "description": "Euler V1 liquidation with USDC debt and WETH collateral"
+    },
+    {
+      "block": 18401234,
+      "tx_hash": "0x4d5e6f789012345678901234567890123456789012345678901234567890a1b2c3",
+      "liquidator": "0xa74e9c6b8d2f5e3a1c7d6e5f8b9a2c3d4e5f6g7h8",
+      "user": "0xb85f0d7c9e3a6f4b2d8e7f6a9c2d5e4f7g8h9i0j1",
+      "underlying_asset": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      "collateral_asset": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "description": "Euler V1 liquidation with DAI debt and WBTC collateral"
+    }
+  ],
+  "euler_v2": [
+    {
+      "block": 18450567,
+      "tx_hash": "0x5e6f789012345678901234567890123456789012345678901234567890a1b2c3d4",
+      "liquidator": "0x742d35cc6634c0532925a3b8d8d5c0532925a3b8",
+      "user": "0x532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
+      "debt_vault": "0xa0b86a33e6ba3b93b63e1fbb4f4bb4f4bb4f4bb4",
+      "collateral_vault": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "description": "Euler V2 vault-based liquidation"
+    },
+    {
+      "block": 18450890,
+      "tx_hash": "0x6f789012345678901234567890123456789012345678901234567890a1b2c3d4e5",
+      "liquidator": "0xc96f8e9d1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7",
+      "user": "0xd0a7f9e2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9",
+      "debt_vault": "0xd1b2c3a4e5f6789012345678901234567890123456",
+      "collateral_vault": "0xe2c3d4b5f6g7890123456789012345678901234567",
+      "description": "Euler V2 batch liquidation example"
+    }
+  ],
+  "morpho": [
+    {
+      "block": 18600345,
+      "tx_hash": "0x7g890123456789012345678901234567890123456789012345678901234a1b2c3d4e5f6",
+      "liquidator": "0x742d35cc6634c0532925a3b8d8d5c0532925a3b8",
+      "borrower": "0x532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
+      "market_id": "0x7b00000000000000000000000000000000000000000000000000000000000001",
+      "loan_token": "0xA0b86a33E6441db5dB86DF4D9E5C4e6a05F3a5db",
+      "collateral_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "description": "Morpho Blue liquidation in USDC/WETH market"
+    },
+    {
+      "block": 18600678,
+      "tx_hash": "0x8h901234567890123456789012345678901234567890123456789012a1b2c3d4e5f6g7",
+      "liquidator": "0xe3d4c5b6a7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3",
+      "borrower": "0xf4e5d6c7b8a9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4",
+      "market_id": "0x7b00000000000000000000000000000000000000000000000000000000000002",
+      "loan_token": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      "collateral_token": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "description": "Morpho Blue liquidation in DAI/WBTC market with bad debt"
+    }
+  ],
+  "test_metadata": {
+    "last_updated": "2024-01-15",
+    "network": "ethereum_mainnet",
+    "data_source": "manual_curation",
+    "notes": [
+      "These are example transaction hashes for testing purposes",
+      "Replace with actual liquidation transaction hashes from your research",
+      "Ensure the block numbers and addresses correspond to real transactions",
+      "Some transactions may not exist - tests should handle this gracefully"
+    ],
+    "usage": {
+      "update_frequency": "Add new liquidations as they are discovered",
+      "validation": "Verify transaction hashes exist before adding to this file",
+      "testing": "Use with integration tests to validate protocol processors"
+    }
+  }
+}
