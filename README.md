@@ -134,7 +134,7 @@ Integration tests validate OEV protocol processors against real blockchain data 
    ```bash
    export ANKR_RPC_URL="https://rpc.ankr.com/eth"
    ```
-   
+
    Or copy and configure the environment file:
    ```bash
    cp .env.example .env
@@ -172,7 +172,7 @@ uv run pytest tests/integration/test_oev_protocols.py::TestOEVProtocolsIntegrati
 #### Integration Test Categories
 
 - **Protocol Validation**: Test protocol processors with real liquidation transactions
-- **Cross-Protocol Analysis**: Analyze blocks containing multiple protocol liquidations  
+- **Cross-Protocol Analysis**: Analyze blocks containing multiple protocol liquidations
 - **Gas Efficiency**: Compare gas usage patterns across different protocols
 - **Error Handling**: Validate robustness with invalid data and edge cases
 - **Market Data**: Test live contract interactions (Morpho market info, etc.)
@@ -255,3 +255,4 @@ tests/                      # Unit tests mirroring src structure
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+# Pre-commit hooks configured

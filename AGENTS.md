@@ -64,7 +64,7 @@ cz version -p    # Show current version
 
 **Conventional commit types:**
 - `feat`: New features
-- `fix`: Bug fixes  
+- `fix`: Bug fixes
 - `docs`: Documentation changes
 - `style`: Code style changes
 - `refactor`: Code refactoring

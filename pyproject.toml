@@ -22,6 +22,7 @@ dev = [
     "poethepoet>=0.29.0",
     "commitizen>=3.29.0",
     "python-dotenv>=1.1.1",
+    "pre-commit>=4.0.0",
 ]
 
 [tool.poe.tasks]

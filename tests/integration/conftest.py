@@ -146,4 +146,3 @@ def pytest_collection_modifyitems(config, items):
         # Skip integration tests if no RPC URL is configured
         if item.get_closest_marker("integration") and not os.getenv("ANKR_RPC_URL"):
             item.add_marker(pytest.mark.skip(reason="ANKR_RPC_URL not configured"))
-
