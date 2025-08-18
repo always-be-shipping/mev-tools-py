@@ -1,6 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from web3 import Web3
+from web3.contract import Contract
 
 from mev_tools_py.oev.protocols.base import BaseProtocolProcessor
 
@@ -103,9 +103,66 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
         "type": "event",
     }
 
-    def __init__(self) -> None:
+    # Morpho Blue contract ABI for market data queries
+    MORPHO_BLUE_ABI = [
+        {
+            "inputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+            "name": "market",
+            "outputs": [
+                {
+                    "internalType": "uint128",
+                    "name": "totalSupplyAssets",
+                    "type": "uint128",
+                },
+                {
+                    "internalType": "uint128",
+                    "name": "totalSupplyShares",
+                    "type": "uint128",
+                },
+                {
+                    "internalType": "uint128",
+                    "name": "totalBorrowAssets",
+                    "type": "uint128",
+                },
+                {
+                    "internalType": "uint128",
+                    "name": "totalBorrowShares",
+                    "type": "uint128",
+                },
+                {"internalType": "uint128", "name": "lastUpdate", "type": "uint128"},
+                {"internalType": "uint128", "name": "fee", "type": "uint128"},
+            ],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+            "name": "idToMarketParams",
+            "outputs": [
+                {"internalType": "address", "name": "loanToken", "type": "address"},
+                {
+                    "internalType": "address",
+                    "name": "collateralToken",
+                    "type": "address",
+                },
+                {"internalType": "address", "name": "oracle", "type": "address"},
+                {"internalType": "address", "name": "irm", "type": "address"},
+                {"internalType": "uint256", "name": "lltv", "type": "uint256"},
+            ],
+            "stateMutability": "view",
+            "type": "function",
+        },
+    ]
+
+    def __init__(self, web3_provider: Optional[str] = None) -> None:
         """Initialize the Morpho protocol processor with web3 instance."""
-        self.w3 = Web3()
+        from web3 import Web3
+
+        if web3_provider:
+            self.w3 = Web3(Web3.HTTPProvider(web3_provider))
+        else:
+            self.w3 = Web3()
+
         # Create event contracts for decoding
         self.liquidate_event = self.w3.eth.contract(
             abi=[self.LIQUIDATE_EVENT_ABI]
@@ -113,6 +170,14 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
         self.accrue_interest_event = self.w3.eth.contract(
             abi=[self.ACCRUE_INTEREST_EVENT_ABI]
         ).events.AccrueInterest
+
+        # Create contract instance for querying market data
+        self.morpho_contract: Optional[Contract] = None
+        if self.w3.is_connected():
+            self.morpho_contract = self.w3.eth.contract(
+                address=Web3.to_checksum_address(self.MORPHO_BLUE_ADDRESS),
+                abi=self.MORPHO_BLUE_ABI,
+            )
 
     def decode_liquidation(self, log: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -298,19 +363,87 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
 
     def get_market_info(self, market_id: str) -> Dict[str, Any]:
         """
-        Get market information for a specific market ID.
-        This would typically query the Morpho Blue contract.
+        Get market information for a specific market ID by querying the Morpho Blue contract.
+
+        Args:
+            market_id: The market ID as a hex string (with or without 0x prefix)
+
+        Returns:
+            Dictionary containing market parameters and current state
+
+        Raises:
+            ValueError: If market_id format is invalid or contract call fails
+            RuntimeError: If web3 connection is not available
         """
-        # This is a placeholder - in a real implementation, this would
-        # make calls to the Morpho Blue contract to get market parameters
-        return {
-            "market_id": market_id,
-            "loan_token": "0x0000000000000000000000000000000000000000",  # Would be fetched
-            "collateral_token": "0x0000000000000000000000000000000000000000",  # Would be fetched
-            "oracle": "0x0000000000000000000000000000000000000000",  # Would be fetched
-            "irm": "0x0000000000000000000000000000000000000000",  # Would be fetched
-            "lltv": 0.0,  # Loan-to-value ratio, would be fetched
-        }
+        if not self.morpho_contract:
+            raise RuntimeError(
+                "Web3 connection not available. Cannot query market info."
+            )
+
+        # Ensure market_id is properly formatted as bytes32
+        if isinstance(market_id, str):
+            if market_id.startswith("0x"):
+                market_id_bytes = bytes.fromhex(market_id[2:])
+            else:
+                market_id_bytes = bytes.fromhex(market_id)
+
+            # Pad to 32 bytes if needed
+            if len(market_id_bytes) < 32:
+                market_id_bytes = market_id_bytes.ljust(32, b"\x00")
+            elif len(market_id_bytes) > 32:
+                raise ValueError(
+                    f"Market ID too long: {len(market_id_bytes)} bytes (max 32)"
+                )
+
+        try:
+            # Query market parameters
+            market_params = self.morpho_contract.functions.idToMarketParams(
+                market_id_bytes
+            ).call()
+            loan_token, collateral_token, oracle, irm, lltv = market_params
+
+            # Query current market state
+            market_state = self.morpho_contract.functions.market(market_id_bytes).call()
+            (
+                total_supply_assets,
+                total_supply_shares,
+                total_borrow_assets,
+                total_borrow_shares,
+                last_update,
+                fee,
+            ) = market_state
+
+            # Convert LLTV from wei to percentage (Morpho Blue stores LLTV as a number where 1e18 = 100%)
+            lltv_percentage = float(lltv) / 1e18
+
+            return {
+                "market_id": (
+                    market_id if market_id.startswith("0x") else f"0x{market_id}"
+                ),
+                "loan_token": loan_token,
+                "collateral_token": collateral_token,
+                "oracle": oracle,
+                "irm": irm,  # Interest Rate Model
+                "lltv": lltv_percentage,  # Loan-to-Liquidation Threshold Value as percentage
+                "lltv_raw": str(lltv),  # Raw LLTV value for precision
+                "market_state": {
+                    "total_supply_assets": str(total_supply_assets),
+                    "total_supply_shares": str(total_supply_shares),
+                    "total_borrow_assets": str(total_borrow_assets),
+                    "total_borrow_shares": str(total_borrow_shares),
+                    "last_update": int(last_update),
+                    "fee": str(fee),
+                },
+                "utilization_rate": (
+                    float(total_borrow_assets) / float(total_supply_assets)
+                    if total_supply_assets > 0
+                    else 0.0
+                ),
+                "is_active": total_supply_assets > 0 or total_borrow_assets > 0,
+            }
+
+        except Exception as e:
+            raise ValueError(f"Failed to query market info for {market_id}: {e}") from e
 
     def calculate_liquidation_incentive(self, market_id: str, lltv: float) -> float:
         """
@@ -338,14 +471,20 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
         """
         Get the liquidation threshold for a specific market.
         This is the LLTV (Loan-to-Liquidation Threshold Value) in Morpho Blue.
+
+        Args:
+            market_id: The market ID as a hex string
+
+        Returns:
+            The liquidation threshold as a percentage (0.0 to 1.0)
+
+        Raises:
+            ValueError: If market info cannot be retrieved
         """
-        # This is a placeholder - in a real implementation, this would
-        # fetch the LLTV from the market parameters
-        market_lltv_examples = {
-            # Common Morpho Blue market LLTVs (as percentages)
-            "weth_usdc_86%": 0.86,  # WETH/USDC at 86% LLTV
-            "weth_usdt_86%": 0.86,  # WETH/USDT at 86% LLTV
-            "wbtc_usdc_86%": 0.86,  # WBTC/USDC at 86% LLTV
-            "wsteth_usdc_86%": 0.86,  # wstETH/USDC at 86% LLTV
-        }
-        return market_lltv_examples.get(market_id, 0.80)  # Default 80%
+        try:
+            market_info = self.get_market_info(market_id)
+            return market_info["lltv"]
+        except Exception as e:
+            # Fallback to reasonable default if contract call fails
+            print(f"Warning: Could not fetch LLTV for market {market_id}: {e}")
+            return 0.80  # Default 80% LLTV

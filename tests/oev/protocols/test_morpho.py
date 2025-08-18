@@ -520,14 +520,46 @@ class TestMorphoProtocolProcessor:
     def test_get_market_info(self, processor: MorphoProtocolProcessor) -> None:
         """Test market info getter method."""
         market_id = "0x7b00000000000000000000000000000000000000000000000000000000000001"
-        market_info = processor.get_market_info(market_id)
+        
+        # Mock the contract calls since we don't have a real connection
+        mock_market_params = (
+            "0xA0b86a33E6441db5db86df4d9e5c4e6a05f3a5db",  # loan_token
+            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",  # collateral_token  
+            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",  # oracle
+            "0x870aC11D48B15DB9a138Cf899d20F13F79Ba00BC",  # irm
+            860000000000000000,  # lltv (86% as 0.86 * 1e18)
+        )
+        
+        mock_market_state = (
+            1000000000000000000000,  # total_supply_assets
+            1000000000000000000000,  # total_supply_shares
+            800000000000000000000,   # total_borrow_assets
+            800000000000000000000,   # total_borrow_shares
+            1699363200,              # last_update
+            50000000000000000,       # fee
+        )
+        
+        if processor.morpho_contract:
+            with patch.object(processor.morpho_contract.functions, "idToMarketParams") as mock_market_params_func, \
+                 patch.object(processor.morpho_contract.functions, "market") as mock_market_func:
+                
+                mock_market_params_func.return_value.call.return_value = mock_market_params
+                mock_market_func.return_value.call.return_value = mock_market_state
+                
+                market_info = processor.get_market_info(market_id)
 
-        assert market_info["market_id"] == market_id
-        assert "loan_token" in market_info
-        assert "collateral_token" in market_info
-        assert "oracle" in market_info
-        assert "irm" in market_info
-        assert "lltv" in market_info
+                assert market_info["market_id"] == market_id
+                assert market_info["loan_token"] == "0xA0b86a33E6441db5db86df4d9e5c4e6a05f3a5db"
+                assert market_info["collateral_token"] == "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+                assert market_info["oracle"] == "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419"
+                assert market_info["irm"] == "0x870aC11D48B15DB9a138Cf899d20F13F79Ba00BC"
+                assert market_info["lltv"] == 0.86
+                assert market_info["utilization_rate"] == 0.8  # 800/1000
+                assert market_info["is_active"] is True
+        else:
+            # Test error case when no contract connection
+            with pytest.raises(RuntimeError, match="Web3 connection not available"):
+                processor.get_market_info(market_id)
 
     def test_calculate_liquidation_incentive(
         self, processor: MorphoProtocolProcessor
@@ -557,13 +589,46 @@ class TestMorphoProtocolProcessor:
         self, processor: MorphoProtocolProcessor
     ) -> None:
         """Test liquidation threshold getter method."""
-        market_id = "weth_usdc_86%"
-        threshold = processor.get_liquidation_threshold(market_id)
-        assert threshold == 0.86
+        market_id = "0x7b00000000000000000000000000000000000000000000000000000000000001"
+        
+        # Mock get_market_info to return test data
+        with patch.object(processor, "get_market_info") as mock_get_market_info:
+            mock_get_market_info.return_value = {"lltv": 0.86}
+            threshold = processor.get_liquidation_threshold(market_id)
+            assert threshold == 0.86
+            mock_get_market_info.assert_called_once_with(market_id)
 
-        # Test unknown market (should return default)
-        unknown_threshold = processor.get_liquidation_threshold("unknown_market")
-        assert unknown_threshold == 0.80
+        # Test fallback when get_market_info fails
+        with patch.object(processor, "get_market_info", side_effect=Exception("Connection failed")):
+            threshold = processor.get_liquidation_threshold(market_id)
+            assert threshold == 0.80  # Default fallback
+
+    def test_get_market_info_invalid_market_id(self, processor: MorphoProtocolProcessor) -> None:
+        """Test market info with invalid market ID format."""
+        if processor.morpho_contract:
+            # Test with non-string market ID
+            with pytest.raises(ValueError, match="Market ID must be a string"):
+                processor.get_market_info(123)  # type: ignore
+            
+            # Test with market ID that's too long
+            long_market_id = "0x" + "0" * 66  # 33 bytes when max is 32
+            with pytest.raises(ValueError, match="Market ID too long"):
+                processor.get_market_info(long_market_id)
+        else:
+            # Test when no contract connection is available
+            with pytest.raises(RuntimeError, match="Web3 connection not available"):
+                processor.get_market_info("0x123")
+
+    def test_get_market_info_contract_call_failure(self, processor: MorphoProtocolProcessor) -> None:
+        """Test market info when contract calls fail."""
+        market_id = "0x7b00000000000000000000000000000000000000000000000000000000000001"
+        
+        if processor.morpho_contract:
+            with patch.object(processor.morpho_contract.functions, "idToMarketParams") as mock_market_params:
+                mock_market_params.return_value.call.side_effect = Exception("Contract call failed")
+                
+                with pytest.raises(ValueError, match="Failed to query market info"):
+                    processor.get_market_info(market_id)
 
     def test_decode_liquidation_zero_amounts(
         self,
