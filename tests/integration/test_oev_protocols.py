@@ -331,7 +331,7 @@ class TestOEVProtocolsIntegration:
 
     @pytest.mark.integration
     def test_error_handling_robustness(
-        self, web3_instance: Web3, protocol_processors: Dict[str, Any]
+        self, protocol_processors: Dict[str, Any]
     ) -> None:
         """Test error handling with invalid data."""
         # Test with invalid transaction data
