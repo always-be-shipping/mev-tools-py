@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from web3 import Web3
 
@@ -238,7 +238,7 @@ class AaveV3ProtocolProcessor(BaseProtocolProcessor):
 
     def is_liquidation_transaction(
         self, transaction: Dict[str, Any], logs: List[Dict[str, Any]]
-    ) -> bool:
+    ) -> Tuple[bool, int]:
         """
         Detect if a transaction contains an Aave V3 liquidation.
 
@@ -257,7 +257,7 @@ class AaveV3ProtocolProcessor(BaseProtocolProcessor):
         if to_address not in aave_v3_contracts:
             # Also check if it's sent to a flashloan aggregator or router
             # that might interact with Aave V3
-            pass
+            return False, -1
 
         # Get the liquidation event topic from the ABI
         liquidation_call_event_topic = self.w3.keccak(
@@ -265,7 +265,7 @@ class AaveV3ProtocolProcessor(BaseProtocolProcessor):
         ).to_0x_hex()
 
         # Check for liquidation events in logs
-        for log in logs:
+        for idx, log in enumerate(logs):
             topics = log.get("topics", [])
             if not topics:
                 continue
@@ -277,7 +277,7 @@ class AaveV3ProtocolProcessor(BaseProtocolProcessor):
                 # Verify the log is from the Aave V3 Pool contract
                 log_address = log.get("address", "").lower()
                 if log_address == self.POOL_ADDRESS.lower():
-                    return True
+                    return True, idx
 
         # Check transaction input for liquidation method calls
         input_data = transaction.get("input", "")
@@ -287,15 +287,15 @@ class AaveV3ProtocolProcessor(BaseProtocolProcessor):
             # Aave V3 liquidation method signatures
             liquidation_methods = {
                 "0x00a718a9",  # liquidationCall method signature
-                "0x52d84d1e",  # flashLiquidationCall method signature (if exists)
+                "0x52d84d1e",  # flashLiquidation method signature (example)
             }
 
             if method_signature in liquidation_methods:
-                # Only return True if transaction is to the pool contract
+                # Only return True if transaction is to the Aave V3 Pool contract
                 if to_address in aave_v3_contracts:
-                    return True
+                    return True, -1
 
-        return False
+        return False, -1
 
     def get_liquidation_threshold(self, asset: str) -> float:
         """

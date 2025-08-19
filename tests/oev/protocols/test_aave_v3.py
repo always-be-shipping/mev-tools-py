@@ -10,6 +10,10 @@ from mev_tools_py.oev.protocols.aave_v3 import AaveV3ProtocolProcessor
 class TestAaveV3ProtocolProcessor:
     """Test suite for Aave V3 protocol processor."""
 
+    liquidation_topic = HexBytes(
+        "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
+    )
+
     @pytest.fixture
     def processor(self) -> AaveV3ProtocolProcessor:
         """Create an instance of AaveV3ProtocolProcessor for testing."""
@@ -20,9 +24,7 @@ class TestAaveV3ProtocolProcessor:
         """Sample Aave V3 liquidation log data for testing."""
         return {
             "topics": [
-                HexBytes(
-                    "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
-                ),  # LiquidationCall event signature
+                self.liquidation_topic,
                 "0x000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",  # collateralAsset (WETH)
                 "0x000000000000000000000000a0b86a33e6441db5db86df4d9e5c4e6a05f3a5",  # debtAsset (USDC)
                 "0x000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",  # user
@@ -273,15 +275,16 @@ class TestAaveV3ProtocolProcessor:
     ) -> None:
         """Test liquidation detection with transaction to Aave V3 Pool contract."""
         with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
+            mock_keccak.return_value.to_0x_hex.return_value = (
                 "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
             )
 
-            result = processor.is_liquidation_transaction(
+            is_liquidation, log_idx = processor.is_liquidation_transaction(
                 sample_transaction, sample_logs
             )
 
-            assert result is True
+            assert is_liquidation is True
+            assert log_idx == 0
 
     def test_is_liquidation_transaction_wrong_contract(
         self, processor: AaveV3ProtocolProcessor, sample_logs: List[Dict[str, Any]]
@@ -292,15 +295,12 @@ class TestAaveV3ProtocolProcessor:
             "input": "0x00a718a9000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         }
 
-        # Mock the keccak method to return the actual expected topic
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, sample_logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, sample_logs)
-
-            assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_method_signature(
         self, processor: AaveV3ProtocolProcessor
@@ -312,9 +312,12 @@ class TestAaveV3ProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []  # No logs
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is True
+        assert is_liquidation is True
+        assert log_idx == -1  # No event logs, just method signature
 
     def test_is_liquidation_transaction_flash_liquidation(
         self, processor: AaveV3ProtocolProcessor
@@ -326,9 +329,12 @@ class TestAaveV3ProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is True
+        assert is_liquidation is True
+        assert log_idx == -1  # No event logs, just method signature
 
     def test_is_liquidation_transaction_no_match(
         self, processor: AaveV3ProtocolProcessor
@@ -340,9 +346,12 @@ class TestAaveV3ProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_event_detection(
         self, processor: AaveV3ProtocolProcessor
@@ -354,23 +363,17 @@ class TestAaveV3ProtocolProcessor:
         }
         logs = [
             {
-                "topics": [
-                    HexBytes(
-                        "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
-                    )
-                ],
+                "topics": [self.liquidation_topic],
                 "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",  # Aave V3 Pool
             }
         ]
 
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, logs)
-
-            assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_wrong_event_address(
         self, processor: AaveV3ProtocolProcessor
@@ -382,23 +385,17 @@ class TestAaveV3ProtocolProcessor:
         }
         logs = [
             {
-                "topics": [
-                    HexBytes(
-                        "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
-                    )
-                ],
+                "topics": [self.liquidation_topic],
                 "address": "0x1234567890123456789012345678901234567890",  # Wrong address
             }
         ]
 
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, logs)
-
-            assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_liquidation_event_abi_structure(
         self, processor: AaveV3ProtocolProcessor
@@ -489,9 +486,12 @@ class TestAaveV3ProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_short_input(
         self, processor: AaveV3ProtocolProcessor
@@ -503,9 +503,12 @@ class TestAaveV3ProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_no_logs_no_topics(
         self, processor: AaveV3ProtocolProcessor
@@ -517,6 +520,9 @@ class TestAaveV3ProtocolProcessor:
         }
         logs = [{"topics": [], "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"}]
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1

@@ -3,6 +3,7 @@
 import pytest
 from typing import Any, Dict, List
 from web3 import Web3
+from hexbytes import HexBytes
 
 
 class TestOEVProtocolsIntegration:
@@ -344,7 +345,9 @@ class TestOEVProtocolsIntegration:
         invalid_logs = [
             {
                 "topics": [
-                    "0x1234567890123456789012345678901234567890123456789012345678901234"
+                    HexBytes(
+                        "0x1234567890123456789012345678901234567890123456789012345678901234"
+                    )
                 ],
                 "data": "0x1234567890123456789012345678901234567890123456789012345678901234",
                 "address": "0x1234567890123456789012345678901234567890",
@@ -355,7 +358,9 @@ class TestOEVProtocolsIntegration:
             # Test liquidation detection with invalid data - should not crash
             try:
                 result = processor.is_liquidation_transaction(invalid_tx, invalid_logs)
-                assert isinstance(result, bool)
+                assert isinstance(result, tuple) and len(result) == 2
+                assert isinstance(result[0], bool)
+                assert isinstance(result[1], int)
             except Exception as e:
                 pytest.fail(f"{protocol_name} crashed on invalid transaction data: {e}")
 

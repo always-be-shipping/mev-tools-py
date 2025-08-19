@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 class BaseProtocolProcessor(ABC):
@@ -32,7 +32,7 @@ class BaseProtocolProcessor(ABC):
     @abstractmethod
     def is_liquidation_transaction(
         self, transaction: Dict[str, Any], logs: List[Dict[str, Any]]
-    ) -> bool:
+    ) -> Tuple[bool, int]:
         """
         Detect if a given transaction contains a liquidation from this protocol.
 

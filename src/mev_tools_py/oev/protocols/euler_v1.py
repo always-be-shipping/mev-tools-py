@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from web3 import Web3
 
@@ -167,7 +167,7 @@ class EulerProtocolProcessor(BaseProtocolProcessor):
 
     def is_liquidation_transaction(
         self, transaction: Dict[str, Any], logs: List[Dict[str, Any]]
-    ) -> bool:
+    ) -> Tuple[bool, int]:
         """
         Detect if a transaction contains an Euler liquidation.
 
@@ -185,15 +185,16 @@ class EulerProtocolProcessor(BaseProtocolProcessor):
         }
 
         if to_address not in euler_contracts:
-            return False
+            return False, -1
 
         # Get the liquidation event topic from the ABI
         liquidation_event_topic = self.w3.keccak(
             text="Liquidation(address,address,address,address,uint256,uint256,uint256,uint256,uint256)"
         ).to_0x_hex()
 
+        print(liquidation_event_topic)
         # Check for liquidation events in logs
-        for log in logs:
+        for idx, log in enumerate(logs):
             topics = log.get("topics", [])
             if not topics:
                 continue
@@ -202,20 +203,6 @@ class EulerProtocolProcessor(BaseProtocolProcessor):
 
             # Check for Liquidation events
             if event_signature == liquidation_event_topic:
-                return True
+                return True, idx
 
-        # Check transaction input for liquidation method calls
-        input_data = transaction.get("input", "")
-        if input_data and len(input_data) >= 10:  # At least function selector (4 bytes)
-            method_signature = input_data[:10]  # First 4 bytes (8 hex chars + 0x)
-
-            # Euler liquidation method signatures
-            liquidation_methods = {
-                "0x96cd4ddb",  # liquidate method signature
-                "0xb2a02ff1",  # batch liquidation method
-            }
-
-            if method_signature in liquidation_methods:
-                return True
-
-        return False
+        return False, -1

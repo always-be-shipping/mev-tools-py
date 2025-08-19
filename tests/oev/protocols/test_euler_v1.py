@@ -10,6 +10,10 @@ from mev_tools_py.oev.protocols.euler_v1 import EulerProtocolProcessor
 class TestEulerProtocolProcessor:
     """Test suite for Euler V1 protocol processor."""
 
+    liquidation_topic = HexBytes(
+        "0xbba0f1d6fb8b9abe2bbc543b7c13d43faba91c6f78da4700381c94041ac7267d"
+    )
+
     @pytest.fixture
     def processor(self) -> EulerProtocolProcessor:
         """Create an instance of EulerProtocolProcessor for testing."""
@@ -20,9 +24,7 @@ class TestEulerProtocolProcessor:
         """Sample liquidation log data for testing."""
         return {
             "topics": [
-                HexBytes(
-                    "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8"
-                ),  # Event signature
+                self.liquidation_topic,  # Event signature
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # liquidator
                 "0x000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",  # violator
                 "0x000000000000000000000000a0b86a33e6ba3b93b63e1fbb4f4bb4f4bb4f4bb4",  # underlying
@@ -191,17 +193,12 @@ class TestEulerProtocolProcessor:
         sample_logs: List[Dict[str, Any]],
     ) -> None:
         """Test liquidation detection with transaction to Euler contract."""
-        # Mock the keccak method to return a predictable hash
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            sample_transaction, sample_logs
+        )
 
-            result = processor.is_liquidation_transaction(
-                sample_transaction, sample_logs
-            )
-
-            assert result is True
+        assert is_liquidation is True
+        assert log_idx == 0
 
     def test_is_liquidation_transaction_exec_proxy(
         self, processor: EulerProtocolProcessor, sample_logs: List[Dict[str, Any]]
@@ -212,14 +209,12 @@ class TestEulerProtocolProcessor:
             "input": "0x96cd4ddb000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
         }
 
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, sample_logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, sample_logs)
-
-            assert result is True
+        assert is_liquidation is True
+        assert log_idx == 0
 
     def test_is_liquidation_transaction_wrong_contract(
         self, processor: EulerProtocolProcessor, sample_logs: List[Dict[str, Any]]
@@ -230,23 +225,12 @@ class TestEulerProtocolProcessor:
             "input": "0x96cd4ddb000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
         }
 
-        result = processor.is_liquidation_transaction(transaction, sample_logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, sample_logs
+        )
 
-        assert result is False
-
-    def test_is_liquidation_transaction_method_signature(
-        self, processor: EulerProtocolProcessor
-    ) -> None:
-        """Test liquidation detection based on method signature."""
-        transaction = {
-            "to": "0x27182842E098f60e3D576794A5bFFb0777E025d3",  # Euler mainnet address
-            "input": "0x96cd4ddb000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
-        }
-        logs: List[Dict[str, Any]] = []  # No logs
-
-        result = processor.is_liquidation_transaction(transaction, logs)
-
-        assert result is True
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_batch_method(
         self, processor: EulerProtocolProcessor
@@ -258,9 +242,12 @@ class TestEulerProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is True
+        assert is_liquidation is False
+        assert log_idx == -1  # No event logs, just method signature
 
     def test_is_liquidation_transaction_no_match(
         self, processor: EulerProtocolProcessor
@@ -272,9 +259,12 @@ class TestEulerProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_empty_input(
         self, processor: EulerProtocolProcessor
@@ -286,9 +276,12 @@ class TestEulerProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_short_input(
         self, processor: EulerProtocolProcessor
@@ -300,9 +293,12 @@ class TestEulerProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_constants(self, processor: EulerProtocolProcessor) -> None:
         """Test that contract constants are set correctly."""

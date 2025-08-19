@@ -10,6 +10,10 @@ from mev_tools_py.oev.protocols.morpho import MorphoProtocolProcessor
 class TestMorphoProtocolProcessor:
     """Test suite for Morpho protocol processor."""
 
+    liquidation_topic = HexBytes(
+        "0xa4946ede45d0c6f06a0f5ce92c9ad3b4751452d2fe0e25010783bcab57a67e41"
+    )
+
     @pytest.fixture
     def processor(self) -> MorphoProtocolProcessor:
         """Create an instance of MorphoProtocolProcessor for testing."""
@@ -20,9 +24,7 @@ class TestMorphoProtocolProcessor:
         """Sample Morpho liquidation log data for testing."""
         return {
             "topics": [
-                HexBytes(
-                    "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-                ),  # Liquidate event signature
+                self.liquidation_topic,  # Liquidate event signature
                 "0x7b00000000000000000000000000000000000000000000000000000000000001",  # market id
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # caller (liquidator)
                 "0x000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",  # borrower
@@ -316,16 +318,12 @@ class TestMorphoProtocolProcessor:
         sample_logs: List[Dict[str, Any]],
     ) -> None:
         """Test liquidation detection with transaction to Morpho Blue contract."""
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            sample_transaction, sample_logs
+        )
 
-            result = processor.is_liquidation_transaction(
-                sample_transaction, sample_logs
-            )
-
-            assert result is True
+        assert is_liquidation is True
+        assert log_idx == 0
 
     def test_is_liquidation_transaction_wrong_contract(
         self, processor: MorphoProtocolProcessor, sample_logs: List[Dict[str, Any]]
@@ -336,16 +334,13 @@ class TestMorphoProtocolProcessor:
             "input": "0x0748ca67000000000000000000000000a0b86a33e6441db5db86df4d9e5c4e6a05f3a5",
         }
 
-        # Mock the keccak method to return the correct liquidation event topic
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, sample_logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, sample_logs)
-
-            # Should return True because of the liquidation event in logs from correct address
-            assert result is False
+        # Should return False because transaction is to wrong contract
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_method_signature(
         self, processor: MorphoProtocolProcessor
@@ -357,9 +352,12 @@ class TestMorphoProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []  # No logs
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is True
+        assert is_liquidation is True
+        assert log_idx == -1  # No event logs, just method signature
 
     def test_is_liquidation_transaction_no_match(
         self, processor: MorphoProtocolProcessor
@@ -371,9 +369,12 @@ class TestMorphoProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_event_detection(
         self, processor: MorphoProtocolProcessor
@@ -385,23 +386,17 @@ class TestMorphoProtocolProcessor:
         }
         logs = [
             {
-                "topics": [
-                    HexBytes(
-                        "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-                    )
-                ],
+                "topics": [self.liquidation_topic],
                 "address": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",  # Morpho Blue
             }
         ]
 
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, logs)
-
-            assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_wrong_event_address(
         self, processor: MorphoProtocolProcessor
@@ -413,23 +408,17 @@ class TestMorphoProtocolProcessor:
         }
         logs = [
             {
-                "topics": [
-                    HexBytes(
-                        "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-                    )
-                ],
+                "topics": [self.liquidation_topic],
                 "address": "0x1234567890123456789012345678901234567890",  # Wrong address
             }
         ]
 
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x0eb2ba42ef0de4b5b5b79c5ae8edcd6e93bb29dc5a9b2d12f51e8a8e66a40b5a"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-            result = processor.is_liquidation_transaction(transaction, logs)
-
-            assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_empty_input(
         self, processor: MorphoProtocolProcessor
@@ -441,9 +430,12 @@ class TestMorphoProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_short_input(
         self, processor: MorphoProtocolProcessor
@@ -455,9 +447,12 @@ class TestMorphoProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_is_liquidation_transaction_no_logs_no_topics(
         self, processor: MorphoProtocolProcessor
@@ -469,9 +464,12 @@ class TestMorphoProtocolProcessor:
         }
         logs = [{"topics": [], "address": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb"}]
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_liquidate_event_abi_structure(
         self, processor: MorphoProtocolProcessor

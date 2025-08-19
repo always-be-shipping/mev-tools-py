@@ -10,6 +10,14 @@ from mev_tools_py.oev.protocols.euler_v2 import EulerV2ProtocolProcessor
 class TestEulerV2ProtocolProcessor:
     """Test suite for Euler V2 protocol processor."""
 
+    liquidation_topic = HexBytes(
+        "0x00258c17077932b52edd3432f865846d8481129b969175f90398f6a06d999901"
+    )
+
+    batch_liquidation_topic = HexBytes(
+        "0xd96cb6ba835dba8149c67b2608af25f5f6aa9861043147e0ed6649b74db2b475"
+    )
+
     @pytest.fixture
     def processor(self) -> EulerV2ProtocolProcessor:
         """Create an instance of EulerV2ProtocolProcessor for testing."""
@@ -20,9 +28,7 @@ class TestEulerV2ProtocolProcessor:
         """Sample single liquidation log data for testing."""
         return {
             "topics": [
-                HexBytes(
-                    "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-                ),  # Event signature
+                self.liquidation_topic,
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # liquidator
                 "0x000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",  # violator
                 "0x000000000000000000000000a0b86a33e6ba3b93b63e1fbb4f4bb4f4bb4f4bb4",  # vault
@@ -42,9 +48,7 @@ class TestEulerV2ProtocolProcessor:
         """Sample batch liquidation log data for testing."""
         return {
             "topics": [
-                HexBytes(
-                    "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-                ),  # Event signature
+                self.batch_liquidation_topic,
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # liquidator
             ],
             "data": "0x0000000000000000000000000000000000000000000000000000000000000005",  # numberOfLiquidations
@@ -311,17 +315,12 @@ class TestEulerV2ProtocolProcessor:
         sample_logs_single: List[Dict[str, Any]],
     ) -> None:
         """Test liquidation detection with transaction to Euler V2 factory contract."""
-        # Mock the keccak method to return predictable hashes
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-            )
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            sample_transaction, sample_logs_single
+        )
 
-            result = processor.is_liquidation_transaction(
-                sample_transaction, sample_logs_single
-            )
-
-            assert result is True
+        assert is_liquidation is True
+        assert log_idx == 0
 
     def test_is_liquidation_transaction_batch_event(
         self,
@@ -334,59 +333,12 @@ class TestEulerV2ProtocolProcessor:
             "input": "0xd9627aa4000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
         }
 
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            # Return different hashes for single and batch events
-            mock_keccak.return_value.hex.side_effect = [
-                HexBytes(
-                    "0x1111111111111111111111111111111111111111111111111111111111111111"
-                ),  # single liquidation
-                HexBytes(
-                    "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-                ),  # batch liquidation
-            ]
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, sample_logs_batch
+        )
 
-            result = processor.is_liquidation_transaction(
-                transaction, sample_logs_batch
-            )
-
-            assert result is True
-
-    def test_is_liquidation_transaction_method_signature(
-        self, processor: EulerV2ProtocolProcessor
-    ) -> None:
-        """Test liquidation detection based on method signature."""
-        transaction = {
-            "to": "0x835482FE0532f169024d5E9410199369aAD5C77E",  # Factory address
-            "input": "0x7c025200000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
-        }
-        logs: List[Dict[str, Any]] = []  # No logs
-
-        result = processor.is_liquidation_transaction(transaction, logs)
-
-        assert result is True
-
-    def test_is_liquidation_transaction_vault_contract(
-        self,
-        processor: EulerV2ProtocolProcessor,
-        sample_logs_single: List[Dict[str, Any]],
-    ) -> None:
-        """Test liquidation detection with transaction to unknown vault contract."""
-        transaction = {
-            "to": "0x1234567890123456789012345678901234567890",  # Unknown vault contract
-            "input": "0xa694fc3a000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",
-        }
-
-        with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = HexBytes(
-                "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-            )
-
-            result = processor.is_liquidation_transaction(
-                transaction, sample_logs_single
-            )
-
-            # Should return True because Euler V2 events are present
-            assert result is True
+        assert is_liquidation is True
+        assert log_idx == 0
 
     def test_is_liquidation_transaction_no_match(
         self, processor: EulerV2ProtocolProcessor
@@ -398,9 +350,12 @@ class TestEulerV2ProtocolProcessor:
         }
         logs: List[Dict[str, Any]] = []
 
-        result = processor.is_liquidation_transaction(transaction, logs)
+        is_liquidation, log_idx = processor.is_liquidation_transaction(
+            transaction, logs
+        )
 
-        assert result is False
+        assert is_liquidation is False
+        assert log_idx == -1
 
     def test_constants(self, processor: EulerV2ProtocolProcessor) -> None:
         """Test that V2 contract constants are set correctly."""

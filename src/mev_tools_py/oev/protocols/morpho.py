@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from web3.contract import Contract
 
@@ -307,7 +307,7 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
 
     def is_liquidation_transaction(
         self, transaction: Dict[str, Any], logs: List[Dict[str, Any]]
-    ) -> bool:
+    ) -> Tuple[bool, int]:
         """
         Detect if a transaction contains a Morpho Blue liquidation.
 
@@ -328,8 +328,11 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
             text="Liquidate(bytes32,address,address,uint256,uint256,uint256,uint256,uint256)"
         ).to_0x_hex()
 
+        if not to_address or to_address not in morpho_contracts:
+            return False, -1
+
         # Check for liquidation events in logs
-        for log in logs:
+        for idx, log in enumerate(logs):
             topics = log.get("topics", [])
             if not topics:
                 continue
@@ -341,7 +344,7 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
                 # Verify the log is from the Morpho Blue contract
                 log_address = log.get("address", "").lower()
                 if log_address == self.MORPHO_BLUE_ADDRESS.lower():
-                    return True
+                    return True, idx
 
         # Check transaction input for liquidation method calls
         input_data = transaction.get("input", "")
@@ -357,9 +360,9 @@ class MorphoProtocolProcessor(BaseProtocolProcessor):
             if method_signature in liquidation_methods:
                 # Only return True if transaction is to the Morpho Blue contract
                 if to_address in morpho_contracts:
-                    return True
+                    return True, -1
 
-        return False
+        return False, -1
 
     def get_market_info(self, market_id: str) -> Dict[str, Any]:
         """

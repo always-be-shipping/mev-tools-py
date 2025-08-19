@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from web3 import Web3
 
@@ -222,7 +222,7 @@ class EulerV2ProtocolProcessor(BaseProtocolProcessor):
 
     def is_liquidation_transaction(
         self, transaction: Dict[str, Any], logs: List[Dict[str, Any]]
-    ) -> bool:
+    ) -> Tuple[bool, int]:
         """
         Detect if a transaction contains an Euler V2 liquidation.
 
@@ -239,19 +239,22 @@ class EulerV2ProtocolProcessor(BaseProtocolProcessor):
             self.EULER_V2_ROUTER.lower(),
         }
 
-        # Also check against known vault addresses (would need to be maintained)
-        # For now, we'll rely on event detection if contract address doesn't match
+        if not to_address or to_address not in euler_v2_contracts:
+            return False, -1
 
         # Get the liquidation event topics from the ABIs
         liquidation_event_topic = self.w3.keccak(
             text="Liquidation(address,address,address,address,uint256,uint256,uint256,uint256)"
         ).to_0x_hex()
+
         batch_liquidation_event_topic = self.w3.keccak(
             text="BatchLiquidation(address,uint256)"
-        ).hex()
+        ).to_0x_hex()
+
+        print(liquidation_event_topic, batch_liquidation_event_topic)
 
         # Check for liquidation events in logs
-        for log in logs:
+        for idx, log in enumerate(logs):
             topics = log.get("topics", [])
             if not topics:
                 continue
@@ -263,33 +266,6 @@ class EulerV2ProtocolProcessor(BaseProtocolProcessor):
                 liquidation_event_topic,
                 batch_liquidation_event_topic,
             ]:
-                return True
+                return True, idx
 
-        # Check transaction input for liquidation method calls
-        input_data = transaction.get("input", "")
-        if input_data and len(input_data) >= 10:  # At least function selector (4 bytes)
-            method_signature = input_data[:10]  # First 4 bytes (8 hex chars + 0x)
-
-            # Euler V2 liquidation method signatures
-            liquidation_methods = {
-                "0x7c025200",  # liquidate method signature (example)
-                "0xd9627aa4",  # batchLiquidate method signature (example)
-                "0xa694fc3a",  # vault liquidation method
-            }
-
-            if method_signature in liquidation_methods:
-                return True
-
-        # If we found Euler V2 events but contract address doesn't match known addresses,
-        # it might be a vault contract - still consider it a liquidation
-        if to_address not in euler_v2_contracts:
-            # Check if any Euler V2 events were emitted (indicating vault interaction)
-            for log in logs:
-                topics = log.get("topics", [])
-                if topics and topics[0] in [
-                    liquidation_event_topic,
-                    batch_liquidation_event_topic,
-                ]:
-                    return True
-
-        return False
+        return False, -1
