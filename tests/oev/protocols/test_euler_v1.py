@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import patch
 from typing import Any, Dict, List
 
+from hexbytes import HexBytes
+
 from mev_tools_py.oev.protocols.euler_v1 import EulerProtocolProcessor
 
 
@@ -18,7 +20,9 @@ class TestEulerProtocolProcessor:
         """Sample liquidation log data for testing."""
         return {
             "topics": [
-                "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8",  # Event signature
+                HexBytes(
+                    "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8"
+                ),  # Event signature
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # liquidator
                 "0x000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",  # violator
                 "0x000000000000000000000000a0b86a33e6ba3b93b63e1fbb4f4bb4f4bb4f4bb4",  # underlying
@@ -189,7 +193,7 @@ class TestEulerProtocolProcessor:
         """Test liquidation detection with transaction to Euler contract."""
         # Mock the keccak method to return a predictable hash
         with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = (
+            mock_keccak.return_value.hex.return_value = HexBytes(
                 "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8"
             )
 
@@ -209,7 +213,7 @@ class TestEulerProtocolProcessor:
         }
 
         with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = (
+            mock_keccak.return_value.hex.return_value = HexBytes(
                 "0x56864db9b7b0b85dfa9f4a8b8d5e1f9e4e6f6e9b1c7b8e9e6c5d4a3b2f1e0d9c8"
             )
 

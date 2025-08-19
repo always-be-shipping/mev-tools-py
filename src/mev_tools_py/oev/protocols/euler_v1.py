@@ -190,7 +190,7 @@ class EulerProtocolProcessor(BaseProtocolProcessor):
         # Get the liquidation event topic from the ABI
         liquidation_event_topic = self.w3.keccak(
             text="Liquidation(address,address,address,address,uint256,uint256,uint256,uint256,uint256)"
-        ).hex()
+        ).to_0x_hex()
 
         # Check for liquidation events in logs
         for log in logs:
@@ -198,7 +198,7 @@ class EulerProtocolProcessor(BaseProtocolProcessor):
             if not topics:
                 continue
 
-            event_signature = topics[0]
+            event_signature = topics[0].to_0x_hex()
 
             # Check for Liquidation events
             if event_signature == liquidation_event_topic:

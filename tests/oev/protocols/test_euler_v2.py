@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import patch
 from typing import Any, Dict, List
 
+from hexbytes import HexBytes
+
 from mev_tools_py.oev.protocols.euler_v2 import EulerV2ProtocolProcessor
 
 
@@ -18,7 +20,9 @@ class TestEulerV2ProtocolProcessor:
         """Sample single liquidation log data for testing."""
         return {
             "topics": [
-                "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",  # Event signature
+                HexBytes(
+                    "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                ),  # Event signature
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # liquidator
                 "0x000000000000000000000000532925a3b8d8d5c0532925a3b8d8d5c0532925a3",  # violator
                 "0x000000000000000000000000a0b86a33e6ba3b93b63e1fbb4f4bb4f4bb4f4bb4",  # vault
@@ -38,7 +42,9 @@ class TestEulerV2ProtocolProcessor:
         """Sample batch liquidation log data for testing."""
         return {
             "topics": [
-                "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",  # Event signature
+                HexBytes(
+                    "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                ),  # Event signature
                 "0x000000000000000000000000742d35cc6634c0532925a3b8d8d5c0532925a3b8",  # liquidator
             ],
             "data": "0x0000000000000000000000000000000000000000000000000000000000000005",  # numberOfLiquidations
@@ -307,7 +313,7 @@ class TestEulerV2ProtocolProcessor:
         """Test liquidation detection with transaction to Euler V2 factory contract."""
         # Mock the keccak method to return predictable hashes
         with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = (
+            mock_keccak.return_value.hex.return_value = HexBytes(
                 "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
             )
 
@@ -331,8 +337,12 @@ class TestEulerV2ProtocolProcessor:
         with patch.object(processor.w3, "keccak") as mock_keccak:
             # Return different hashes for single and batch events
             mock_keccak.return_value.hex.side_effect = [
-                "0x1111111111111111111111111111111111111111111111111111111111111111",  # single liquidation
-                "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",  # batch liquidation
+                HexBytes(
+                    "0x1111111111111111111111111111111111111111111111111111111111111111"
+                ),  # single liquidation
+                HexBytes(
+                    "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                ),  # batch liquidation
             ]
 
             result = processor.is_liquidation_transaction(
@@ -367,7 +377,7 @@ class TestEulerV2ProtocolProcessor:
         }
 
         with patch.object(processor.w3, "keccak") as mock_keccak:
-            mock_keccak.return_value.hex.return_value = (
+            mock_keccak.return_value.hex.return_value = HexBytes(
                 "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
             )
 

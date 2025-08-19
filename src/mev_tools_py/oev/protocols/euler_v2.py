@@ -245,7 +245,7 @@ class EulerV2ProtocolProcessor(BaseProtocolProcessor):
         # Get the liquidation event topics from the ABIs
         liquidation_event_topic = self.w3.keccak(
             text="Liquidation(address,address,address,address,uint256,uint256,uint256,uint256)"
-        ).hex()
+        ).to_0x_hex()
         batch_liquidation_event_topic = self.w3.keccak(
             text="BatchLiquidation(address,uint256)"
         ).hex()
@@ -256,7 +256,7 @@ class EulerV2ProtocolProcessor(BaseProtocolProcessor):
             if not topics:
                 continue
 
-            event_signature = topics[0]
+            event_signature = topics[0].to_0x_hex()
 
             # Check for Liquidation or BatchLiquidation events
             if event_signature in [
