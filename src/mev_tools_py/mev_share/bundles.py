@@ -1,5 +1,10 @@
 from web3 import Web3
-from typing import List, Dict
+from typing import List, Dict, Any, cast
+
+
+def _ensure_hex_prefix(hex_value: str) -> str:
+    """Ensure hex string has 0x prefix."""
+    return hex_value if hex_value.startswith("0x") else "0x" + hex_value
 
 
 def get_mev_bundles(
@@ -7,16 +12,16 @@ def get_mev_bundles(
     block_number: int,
     origin_topic: str,
     refund_address: str,
-) -> List[Dict]:
+) -> List[Dict[str, Any]]:
     block = w3.eth.get_block(block_number, full_transactions=True)
     logs = w3.eth.get_logs({"fromBlock": block_number, "toBlock": block_number})
 
-    builder_address = block["miner"].lower()
+    builder_address = str(block["miner"]).lower()
     txs = block["transactions"]
 
-    logs_by_tx = {}
+    logs_by_tx: Dict[str, List[Any]] = {}
     for log in logs:
-        tx_hash = log["transactionHash"].to_0x_hex()
+        tx_hash = _ensure_hex_prefix(log["transactionHash"].hex())
         logs_by_tx.setdefault(tx_hash, []).append(log)
 
     bundles = []
@@ -24,13 +29,16 @@ def get_mev_bundles(
     last_refund_idx = None
 
     for i in reversed(range(len(txs))):
-        tx = txs[i]
-        tx_hash = tx["hash"].to_0x_hex()
+        tx = cast(Dict[str, Any], txs[i])
+        tx_hash = _ensure_hex_prefix(cast(str, tx["hash"].hex()))
 
         # Check for refund
+        tx_to = tx["to"]
+        tx_from = tx["from"]
         if (
-            tx["to"].lower() == refund_address.lower()
-            and tx["from"].lower() == builder_address
+            tx_to is not None
+            and str(tx_to).lower() == refund_address.lower()
+            and str(tx_from).lower() == builder_address
         ):
             print("refund found", i)
             refund_txs.append(tx_hash)
@@ -40,7 +48,9 @@ def get_mev_bundles(
 
         # Check for origin
         for log in logs_by_tx.get(tx_hash, []):
-            if log["topics"][0].to_0x_hex() == origin_topic:
+            if len(log["topics"]) == 0:
+                continue
+            if _ensure_hex_prefix(log["topics"][0].hex()) == origin_topic:
                 if last_refund_idx is not None:
                     bundle = {
                         "origin_tx_hash": tx_hash,
@@ -48,7 +58,10 @@ def get_mev_bundles(
                             ::-1
                         ],  # maintain chronological order
                         "bundle_tx_hashes": [
-                            t["hash"].to_0x_hex() for t in txs[i : last_refund_idx + 1]
+                            _ensure_hex_prefix(
+                                cast(str, cast(Dict[str, Any], t)["hash"].hex())
+                            )
+                            for t in txs[i : last_refund_idx + 1]
                         ],
                     }
                     bundles.append(bundle)

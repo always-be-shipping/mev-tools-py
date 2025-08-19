@@ -1,8 +1,9 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from web3 import Web3
+from eth_typing import HexStr
 
 
-def enrich_tx(w3: Web3, tx_hash: str) -> Dict:
+def enrich_tx(w3: Web3, tx_hash: str) -> Dict[str, Any]:
     """Enrich a transaction with additional details.
 
     Args:
@@ -13,8 +14,8 @@ def enrich_tx(w3: Web3, tx_hash: str) -> Dict:
     - Dict: A dictionary containing enriched transaction details.
     """
 
-    tx = w3.eth.get_transaction(tx_hash)
-    receipt = w3.eth.get_transaction_receipt(tx_hash)
+    tx = w3.eth.get_transaction(HexStr(tx_hash))
+    receipt = w3.eth.get_transaction_receipt(HexStr(tx_hash))
 
     return {
         "hash": tx["hash"].hex(),
