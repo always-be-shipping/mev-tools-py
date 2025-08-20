@@ -23,6 +23,7 @@ pip install mev-tools-py
 git clone https://github.com/yourusername/mev-tools-py.git
 cd mev-tools-py
 uv sync
+uv tools install commitizen poethepoet
 ```
 
 ## Quick Start
@@ -101,27 +102,27 @@ This project uses [poethepoet](https://poethepoet.natn.io/) as a task runner. Av
 ### Setup and Testing
 
 ```bash
-uv run poe install     # Install dependencies
-uv run poe dev         # Full development setup (install + format + lint + test)
-uv run poe test        # Run all tests (unit + integration)
-uv run poe coverage    # Run tests with coverage report
+poe install     # Install dependencies
+poe dev         # Full development setup (install + format + lint + test)
+poe test        # Run all tests (unit + integration)
+poe coverage    # Run tests with coverage report
 ```
 
 ### Code Quality
 
 ```bash
-uv run poe lint        # Run linting
-uv run poe format      # Format code
-uv run poe typecheck   # Type checking
-uv run poe check       # Run all quality checks
-uv run poe fix         # Auto-fix style issues
+poe lint        # Run linting
+poe format      # Format code
+poe typecheck   # Type checking
+poe check       # Run all quality checks
+poe fix         # Auto-fix style issues
 ```
 
 ### Testing Specific Files
 
 ```bash
-uv run poe test-file tests/enrich/test_transactions.py
-uv run poe test-function --file tests/oev/protocols/test_euler_v1.py --function test_decode_liquidation
+poe test-file tests/enrich/test_transactions.py
+poe test-function --file tests/oev/protocols/test_euler_v1.py --function test_decode_liquidation
 ```
 
 ### Integration Tests
@@ -131,11 +132,13 @@ Integration tests validate OEV protocol processors against real blockchain data 
 #### Setup
 
 1. **Configure RPC endpoint**:
+
    ```bash
    export ANKR_RPC_URL="https://rpc.ankr.com/eth"
    ```
 
    Or copy and configure the environment file:
+
    ```bash
    cp .env.example .env
    # Edit .env with your RPC settings
@@ -157,7 +160,7 @@ uv run pytest -m "not integration"
 uv run pytest -m integration
 
 # Run all tests (unit + integration)
-uv run poe test
+poe test
 
 # Run integration tests with custom RPC
 ANKR_RPC_URL=https://your-rpc-endpoint.com uv run pytest -m integration
@@ -179,13 +182,13 @@ uv run pytest tests/integration/test_oev_protocols.py::TestOEVProtocolsIntegrati
 
 #### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ANKR_RPC_URL` | `https://rpc.ankr.com/eth` | Ethereum RPC endpoint |
-| `INTEGRATION_TEST_TIMEOUT` | `30` | Test timeout in seconds |
-| `TEST_BLOCK_START` | `18500000` | Starting block for range tests |
-| `TEST_BLOCK_END` | `18500010` | Ending block for range tests |
-| `SKIP_SLOW_TESTS` | `false` | Skip slow-running tests |
+| Variable                   | Default                    | Description                    |
+| -------------------------- | -------------------------- | ------------------------------ |
+| `ANKR_RPC_URL`             | `https://rpc.ankr.com/eth` | Ethereum RPC endpoint          |
+| `INTEGRATION_TEST_TIMEOUT` | `30`                       | Test timeout in seconds        |
+| `TEST_BLOCK_START`         | `18500000`                 | Starting block for range tests |
+| `TEST_BLOCK_END`           | `18500010`                 | Ending block for range tests   |
+| `SKIP_SLOW_TESTS`          | `false`                    | Skip slow-running tests        |
 
 #### Adding Test Cases
 
@@ -194,6 +197,7 @@ To add new liquidation test cases:
 1. Find a liquidation transaction using a block explorer
 2. Verify it contains the expected protocol events
 3. Add to `tests/integration/data/known_liquidations.json`:
+
    ```json
    {
      "protocol_name": [
@@ -207,6 +211,7 @@ To add new liquidation test cases:
      ]
    }
    ```
+
 4. Run integration tests to validate
 
 See `tests/integration/README.md` for detailed documentation.
@@ -247,12 +252,11 @@ tests/                      # Unit tests mirroring src structure
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
 3. Make your changes and add tests
-4. Run quality checks: `uv run poe check`
-5. Run tests: `uv run poe test`
+4. Run quality checks: `poe check`
+5. Run tests: `poe test`
 6. Commit with conventional format: `uv run cz commit`
 7. Submit a pull request
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-# Pre-commit hooks configured
