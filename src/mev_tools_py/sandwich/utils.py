@@ -128,7 +128,7 @@ def calculate_sandwich_profit(frontrun: SwapEvent, backrun: SwapEvent) -> Decima
     # This is a simplified calculation - real profit calculation would need to account for gas costs
     if frontrun.token_out.address.lower() == backrun.token_in.address.lower():
         # If we got token X in frontrun and spent token X in backrun
-        profit_in_intermediate_token = frontrun.amount_out - backrun.amount_in
+        profit_in_intermediate_token = backrun.amount_in - frontrun.amount_out
         return profit_in_intermediate_token
 
     return Decimal("0")
